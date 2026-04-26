@@ -30,6 +30,16 @@ load_dotenv(os.path.join(ROOT, ".env"))
 
 st.set_page_config(page_title="AI Skill Agent", page_icon="🧠", layout="wide")
 
+# Streamlit Community Cloud stores secrets in `st.secrets`.
+# Map them into environment variables so shared utils work unchanged.
+if not os.environ.get("GROQ_API_KEY"):
+    try:
+        if "GROQ_API_KEY" in st.secrets:
+            os.environ["GROQ_API_KEY"] = str(st.secrets["GROQ_API_KEY"]).strip()
+    except Exception:
+        # If secrets aren't configured, we handle it later with a friendly UI error.
+        pass
+
 
 def extract_pdf_text(pdf_bytes: bytes) -> str:
     reader = PdfReader(io.BytesIO(pdf_bytes))
@@ -69,19 +79,26 @@ if resume and jd and run:
         resume_text = extract_pdf_text(resume_bytes)
 
     with st.spinner("Extracting skills…"):
-        raw = groq_chat(
-            messages=[
-                {"role": "system", "content": SKILL_EXTRACTION_SYSTEM},
-                {
-                    "role": "user",
-                    "content": SKILL_EXTRACTION_USER.format(
-                        resume_text=resume_text[:12000], job_description=jd[:12000]
-                    ),
-                },
-            ],
-            temperature=0.1,
-            max_tokens=1200,
-        )
+        try:
+            raw = groq_chat(
+                messages=[
+                    {"role": "system", "content": SKILL_EXTRACTION_SYSTEM},
+                    {
+                        "role": "user",
+                        "content": SKILL_EXTRACTION_USER.format(
+                            resume_text=resume_text[:12000], job_description=jd[:12000]
+                        ),
+                    },
+                ],
+                temperature=0.1,
+                max_tokens=1200,
+            )
+        except Exception:
+            st.error(
+                "Groq request failed. Double-check your `GROQ_API_KEY` in Streamlit Secrets and redeploy."
+            )
+            st.stop()
+
         data = best_effort_json(raw) or {}
         resume_skills = uniq_skills(data.get("resume_skills") or [])
         jd_skills = uniq_skills(data.get("jd_skills") or [])
