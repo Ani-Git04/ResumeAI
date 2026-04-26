@@ -28,7 +28,7 @@ from skill_parser import compute_missing, uniq_skills  # noqa: E402
 
 load_dotenv(os.path.join(ROOT, ".env"))
 
-st.set_page_config(page_title="AI Skill Agent (Local)", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="AI Skill Agent", page_icon="🧠", layout="wide")
 
 
 def extract_pdf_text(pdf_bytes: bytes) -> str:
@@ -39,18 +39,29 @@ def extract_pdf_text(pdf_bytes: bytes) -> str:
     return "\n".join(parts).strip()
 
 
-st.title("🧠 AI Skill Assessment & Learning Plan (Local)")
-st.caption("Local Streamlit runner using the same Groq prompts as the Vercel serverless API.")
+st.title("AI Skill Assessment & Learning Plan")
+st.caption("Upload a resume + paste a job description. Get skill gaps, an interview, scores, and a learning roadmap.")
+
+with st.sidebar:
+    st.subheader("Setup")
+    st.write("Add `GROQ_API_KEY` in Streamlit Secrets or your environment.")
+    st.code('GROQ_API_KEY="..."', language="toml")
+    st.divider()
+    st.subheader("Controls")
+    max_skills = st.slider("Max skills to interview", min_value=3, max_value=10, value=8)
+    st.caption("Fewer skills = faster + more focused.")
 
 col1, col2 = st.columns(2)
 with col1:
-    resume = st.file_uploader("Upload resume (PDF)", type=["pdf"])
+    resume = st.file_uploader("Resume (PDF)", type=["pdf"])
 with col2:
-    jd = st.text_area("Paste job description", height=220)
+    jd = st.text_area("Job description", height=220, placeholder="Paste the job description here…")
 
-if resume and jd and st.button("Run assessment"):
+run = st.button("Run assessment", type="primary", use_container_width=True)
+
+if resume and jd and run:
     if not os.environ.get("GROQ_API_KEY"):
-        st.error("Missing GROQ_API_KEY. Add it to a local `.env` or your shell env.")
+        st.error("Missing GROQ_API_KEY. Add it to Streamlit Secrets or your environment.")
         st.stop()
 
     with st.spinner("Parsing resume…"):
@@ -83,7 +94,7 @@ if resume and jd and st.button("Run assessment"):
     c3.metric("Missing skills", len(missing))
     st.write("**Missing skills**:", ", ".join(missing[:24]) or "None")
 
-    interview_skills = (missing + jd_skills)[:8]
+    interview_skills = (missing + jd_skills)[: max_skills]
 
     with st.spinner("Generating questions…"):
         raw = groq_chat(
@@ -97,8 +108,8 @@ if resume and jd and st.button("Run assessment"):
         qdata = best_effort_json(raw) or {}
         questions_by_skill: Dict[str, List[str]] = qdata.get("questions_by_skill") or {}
 
-    st.subheader("Interview (manual)")
-    st.info("Answer a few questions, then click “Evaluate” below.")
+    st.subheader("Interview")
+    st.info("Answer what you can. Then click “Evaluate” to get scores + roadmap.")
 
     qa_by_skill = {}
     for sk in interview_skills:
@@ -111,7 +122,7 @@ if resume and jd and st.button("Run assessment"):
             if a.strip():
                 qa_by_skill[sk].append({"q": q, "a": a.strip()})
 
-    if st.button("Evaluate"):
+    if st.button("Evaluate", type="primary"):
         with st.spinner("Scoring answers…"):
             raw = groq_chat(
                 messages=[
@@ -148,5 +159,5 @@ if resume and jd and st.button("Run assessment"):
         st.markdown(md)
 
 st.divider()
-st.caption("Tip: the production UI lives in `frontend/`, and the serverless endpoints live in `api/`.")
+st.caption("Deployed with Streamlit. The `frontend/` + `api/` folders are kept in the repo for reference.")
 

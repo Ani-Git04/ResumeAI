@@ -10,7 +10,7 @@ A production-style AI SaaS web app that:
 - Generates a personalized learning roadmap with free resources
 
 **LLM**: Groq API (`llama3-70b-8192`)  
-**Backend**: Vercel Python Serverless Functions  
+**Deployment (recommended now)**: Streamlit Community Cloud  
 **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2` + FAISS (in-memory)  
 **Frontend**: Vanilla JS + TailwindCSS (glassmorphism, gradients, animations)
 
@@ -28,10 +28,9 @@ A production-style AI SaaS web app that:
   - Generates a Markdown roadmap via `POST /api/learning_plan`
   - Renders a radar chart (Chart.js) and roadmap Markdown (`marked`)
 
-- **Backend** (`api/`)
-  - Each file exports `handler(request)` and returns **JSON only**
-  - Uses a small Groq wrapper in `utils/groq_client.py`
-  - Uses prompts in `utils/prompts.py`
+- **Streamlit app** (`app_local/streamlit_app.py`)
+  - Single deployed UI on Streamlit Community Cloud
+  - Uses the same Groq wrapper + prompts from `utils/`
 
 ---
 
@@ -98,41 +97,26 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2) Run locally with Vercel dev (recommended)
-
-Install the Vercel CLI and run:
+### 2) Run locally with Streamlit
 
 ```bash
-vercel dev
-```
-
-Then open the app in your browser (Vercel dev prints the local URL).
-
-### Optional: Run the local Streamlit runner
-
-This is a lightweight local UI for testing prompts without the premium frontend.
-
-```bash
-pip install streamlit
 streamlit run app_local/streamlit_app.py
 ```
 
 ---
 
-## Deploy to Vercel
+## Deploy to Streamlit Community Cloud
 
-1. Push the `AI-Skill-Agent/` folder to a GitHub repo (or import it directly).
-2. In Vercel:
-   - **Framework Preset**: Other
-   - **Root Directory**: `AI-Skill-Agent`
-   - Add environment variable:
-     - `GROQ_API_KEY`
-3. Deploy.
+1. Go to Streamlit Community Cloud → **New app**
+2. Select your GitHub repo and branch (`main`)
+3. **Main file path**: `app_local/streamlit_app.py`
+4. Add **Secrets**:
 
-The app routes:
+```toml
+GROQ_API_KEY="your_key_here"
+```
 
-- Frontend: `/`
-- API: `/api/*`
+5. Click **Deploy**
 
 ---
 
