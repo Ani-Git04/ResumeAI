@@ -1,8 +1,9 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "functions": {
-    "api/*.py": {
-      "runtime": "python3.11"
+    "api/**/*.py": {
+      "excludeFiles": "{.venv/**,__pycache__/**,**/*.pyc,.pycache/**,tests/**,__tests__/**}"
     }
   },
   "routes": [
