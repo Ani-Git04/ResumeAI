@@ -1,36 +1,32 @@
 # AI Skill Assessment & Personalized Learning Plan Agent
 
-A production-style AI SaaS web app that:
+An AI-powered skill assessment product that turns a **resume + job description** into:
 
-- Parses a resume (PDF) → extracts text
-- Extracts skills from resume + job description
-- Interviews the user conversationally (ChatGPT-style UI)
-- Scores proficiency per skill (0–10 + level)
-- Detects skill gaps (JD vs resume)
-- Generates a personalized learning roadmap with free resources
+- **Skill extraction** (resume vs JD)
+- **Skill gap analysis** (what’s missing)
+- **Interview questions** (3 per skill)
+- **Skill scoring** (0–10 + level)
+- **Personalized learning roadmap** (free-first resources + timelines)
 
-**LLM**: Groq API (`llama3-70b-8192`)  
-**Deployment (recommended now)**: Streamlit Community Cloud  
-**Embeddings**: `sentence-transformers/all-MiniLM-L6-v2` + FAISS (in-memory)  
-**Frontend**: Vanilla JS + TailwindCSS (glassmorphism, gradients, animations)
+### Tech
+
+- **LLM**: Groq API — `llama3-70b-8192`
+- **Deployed UI**: Streamlit (`app_local/streamlit_app.py`)
+- **Web UI (included)**: Vanilla JS + Tailwind (`frontend/`)
+- **Serverless API (included)**: Python handlers (`api/`)
 
 ---
 
 ## Architecture (high-level)
 
-- **Frontend** (`frontend/`)
-  - Uploads a PDF resume (converted to Base64 in-browser)
-  - Sends Base64 PDF to `POST /api/parse_resume`
-  - Sends extracted resume text + job description to `POST /api/extract_skills`
-  - Requests 3 questions per skill from `POST /api/generate_questions`
-  - Runs an interview loop; after each answer calls `POST /api/chat` for a short interviewer response
-  - Sends all Q/A to `POST /api/evaluate_answers`
-  - Generates a Markdown roadmap via `POST /api/learning_plan`
-  - Renders a radar chart (Chart.js) and roadmap Markdown (`marked`)
+- **Streamlit (recommended deployment)**
+  - Entrypoint: `app_local/streamlit_app.py`
+  - Uses shared Groq client + prompts under `utils/`
+  - Reads `GROQ_API_KEY` from Streamlit Secrets (recommended) or environment variables
 
-- **Streamlit app** (`app_local/streamlit_app.py`)
-  - Single deployed UI on Streamlit Community Cloud
-  - Uses the same Groq wrapper + prompts from `utils/`
+- **Optional web frontend + API (kept in repo)**
+  - `frontend/`: premium UI (chat experience, radar chart, markdown viewer)
+  - `api/`: JSON-only serverless-style endpoints for the web UI
 
 ---
 
@@ -63,7 +59,6 @@ AI-Skill-Agent/
 │   └── vector_store.py
 │
 ├── requirements.txt
-├── vercel.json
 ├── README.md
 └── .env.example
 ```
@@ -71,6 +66,8 @@ AI-Skill-Agent/
 ---
 
 ## Environment variables
+
+### Local `.env` (optional)
 
 Create `.env` (for local dev) based on `.env.example`:
 
@@ -120,7 +117,26 @@ GROQ_API_KEY="your_key_here"
 
 ---
 
+## Troubleshooting (Streamlit)
+
+### “Groq request failed”
+
+Common causes:
+
+- **Missing key**: ensure `GROQ_API_KEY` exists in **Streamlit Secrets**
+- **Invalid/revoked key**: generate a new key in Groq and update Secrets
+- **Rate limit / transient network**: reboot the app and try again
+
+### Resume parsing returns empty text
+
+- Some resumes are image-scans. `pypdf` extracts **text**, not OCR.
+- Export your resume as a text-based PDF if possible.
+
+---
+
 ## API reference (JSON only)
+
+> Note: Streamlit deployment does not require these endpoints. They’re kept for the optional web UI.
 
 ### `POST /api/parse_resume`
 
@@ -227,12 +243,20 @@ Output:
 
 ## Sample inputs
 
-- **Job description**: paste any SWE/ML/Full-stack role JD.
-- **Resume**: upload a PDF resume.
+- **Job description**: paste any SWE/ML/Full-stack role JD (recommended: 6–20 bullet points)
+- **Resume**: upload a PDF resume (text-based PDF works best)
+
+---
+
+## Sample outputs (expected)
+
+- **Missing skills**: short list of skills present in the JD but not in the resume
+- **Scores**: objects like `{ skill, score, level, rationale }`
+- **Learning roadmap**: Markdown plan with priorities, time estimates, and free resources
 
 ---
 
 ## Notes
 
-- This project is designed for **serverless** usage: the app does not store persistent session state on the backend.
-- For best UX and reliability, keep resumes under ~8MB.
+- Do **not** commit real API keys. Use Streamlit Secrets or a local `.env`.
+- Keep resumes under ~8MB for reliability.
